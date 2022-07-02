@@ -1,0 +1,21 @@
+#!/bin/bash
+sudo apt update & sudo apt upgrade
+sudo apt install -y apache2
+#########КОНФИГ ПЕРВОГО ХОСТА################
+sudo cat /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-enabled/site1.conf
+sed -i 's/80/81/g' /etc/apache2/sites-enabled/site1.conf
+sed -i 's/html/site1/g' /etc/apache2/sites-enabled/site1.conf
+sudo mkdir /var/www/site1
+sudo touch /var/www/site1/index.html
+echo '<h1> SITE 1 </h1>' > /var/www/site1/index.html
+#########КОНФИГ ВТОРОГО ХОСТА################
+sudo cat /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-enabled/site2.conf
+sed -i 's/80/82/g' /etc/apache2/sites-enabled/site2.conf
+sed -i 's/html/site2/g' /etc/apache2/sites-enabled/site2.conf
+sudo mkdir /var/www/site2
+sudo touch /var/www/site2/index.html
+echo '<h1> SITE 2 </h1>' > /var/www/site2/index.html
+sed -i 's/80/81/g' /etc/apache2/ports.conf
+sudo sed -i.bak '6i\Listen 82\' /etc/apache2/ports.conf
+sudo rm -rf /etc/apache2/sites-enabled/000-default.conf
+sudo systemctl restart apache2.service

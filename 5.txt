@@ -1,0 +1,123 @@
+#!/bin/python3
+import os
+import subprocess
+import time
+import re
+import io
+import sys
+########НЕОБХОДИМЫЕ ЗНАЧЕНИЯ######################
+user = subprocess.getoutput("whoami")
+ip = subprocess.getoutput("hostname -I")
+################################################
+os.system("sudo apt install -y nginx haproxy")
+##НАСТРОЙКА NGINX####################
+os.system("sudo touch /etc/nginx/sites-enabled/default2")
+os.system("sudo rm -rf /var/www/html")
+os.system("clear")
+name_dir = input("Введи название директории в которой будет храниться index.html твоего первого '"'MEGA'"' сайта\n")
+os.system("sudo mkdir /var/www/"+name_dir)
+os.system("sudo touch /var/www/"+name_dir+"/index.html")
+file1 = '/var/www/'+name_dir+'/index.html'
+with open(file1 , "w") as f:
+    f.write("<h1>SITE 1 </h1>")
+
+while True:
+    name_dir2 = input("Введи название директории в которой будет храниться index.html твоего второго '"'MEGA'"' сайта\n")
+    if name_dir != name_dir2:
+        os.system("sudo mkdir /var/www/"+name_dir2)
+        os.system("sudo touch /var/www/"+name_dir2+"/index.html")
+        break
+    else:
+        print("Уже сущетвует")
+
+file2 = '/var/www/'+name_dir2+'/index.html'
+with open(file2 , "w") as f:
+    f.write("<h1>SITE 2 </h1>")
+
+
+file3 = '/etc/nginx/sites-enabled/default'
+with open(file3 , "w") as f:
+            f.write("server {\n"
+        "\tlisten 81;\n"
+        "\tserver_name _;\n"
+        "\troot /var/www/"+name_dir+";\n"
+        "\tindex index.html;\n"
+        "\tlocation / {\n"
+                "\t\ttry_files $uri $uri/ =404;\n"
+        "\t}\n"
+"}")
+
+file4 = '/etc/nginx/sites-enabled/default2'
+with open(file4 , "w") as f:
+            f.write("server {\n"
+        "\tlisten 82;\n"
+        "\tserver_name _;\n"
+        "\troot /var/www/"+name_dir2+";\n"
+        "\tindex index.html;\n"
+        "\tlocation / {\n"
+                "\t\ttry_files $uri $uri/ =404;\n"
+        "\t}\n"
+"}")
+#########НАСТРОЙКА HAPROXY###############################
+os.system("clear")
+username = input("Введите имя пользователя для мониторинга haproxy (например username): ")
+password = input("Введите пароль для мониторинга haproxy (например password): ")
+os.system("clear")
+site1 = input("Введите название 1 сайта для его мониторинга в haproxy (например site1): ")
+site2 = input("Введите название 2 сайта для его мониторинга в haproxy (например site2): ")
+file8 = '/etc/haproxy/haproxy.cfg'
+with open(file8 , "w") as f:
+            f.write("global\n"
+        "\tlog /dev/log    local0\n"
+        "\tlog /dev/log    local1 notice\n"
+        "\tchroot /var/lib/haproxy\n"
+        "\tstats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners\n"
+        "\tstats timeout 30s\n"
+        "\tuser haproxy\n"
+        "\tgroup haproxy\n"
+        "\tdaemon\n"
+"defaults\n"
+        "\tlog     global\n"
+        "\tmode    http\n"
+        "\toption  httplog\n"
+        "\toption  dontlognull\n"
+        "\ttimeout connect 5000\n"
+        "\ttimeout client  50000\n"
+        "\ttimeout server  50000\n"
+        "\terrorfile 400 /etc/haproxy/errors/400.http\n"
+        "\terrorfile 403 /etc/haproxy/errors/403.http\n"
+        "\terrorfile 408 /etc/haproxy/errors/408.http\n"
+        "\terrorfile 500 /etc/haproxy/errors/500.http\n"
+        "\terrorfile 502 /etc/haproxy/errors/502.http\n"
+        "\terrorfile 503 /etc/haproxy/errors/503.http\n"
+        "\terrorfile 504 /etc/haproxy/errors/504.http\n"
+"# HAproxy for web servers\n"
+"frontend http_front\n"
+   "bind *:80\n"
+   "stats uri /haproxy?stats\n"
+   "acl url_blog path_beg /blog\n"
+   "default_backend backendnodes\n"
+"\n"
+"backend backendnodes\n"
+            "\t\tbalance roundrobin\n"
+            "\t\toption forwardfor\n"
+            "\t\thttp-request set-header X-Forwarded-Port %[dst_port]\n"
+            "\t\thttp-request add-header X-Forwarded-Proto https if { ssl_fc }\n"
+            "\t\tserver "+site1+"\t"+ip.rstrip()+":81 check\n"
+            "\t\tserver "+site2+"\t"+ip.rstrip()+":82 check\n"
+"\n"
+"listen stats\n"
+            "\t\tbind :5000\n"
+            "\t\tstats enable\n"
+            "\t\tstats uri /\n"
+            "\t\tstats hide-version\n"
+            "\t\tstats auth "+username+":"+password)
+
+os.system("sudo systemctl restart haproxy nginx")
+os.system("clear")
+print ("Перезапуск NGINX и HAPROXY")
+time.sleep(3)
+os.system("clear")
+print("1. Директории с файлами сайтов index.html хранятся в /var/www/[название ваших сайтов]\n"
+      "2. Настройки вашей forward и revers зон хранятся в /etc/bind/[название вашей зоны].forward .revers\n"
+      "3. Настройка haproxy хранится в /etc/haproxy/haproxy.cfg")

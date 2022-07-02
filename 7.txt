@@ -1,0 +1,21 @@
+#!/bin/bash
+sudo apt update & sudo apt upgrade
+sudo apt install nginx
+#########КОНФИГ ПЕРВОГО ХОСТА################
+sudo tail -n 13 /etc/nginx/sites-available/default | sed 's/#//g' > /etc/nginx/sites-enabled/site1
+sed -i 's/listen 80/listen 81/g' /etc/nginx/sites-enabled/site1
+sed -i 's/server_name example.com/server_name _/g' /etc/nginx/sites-enabled/site1
+sed -i 's&/example.com&/site1&g' /etc/nginx/sites-enabled/site1
+sudo mkdir /var/www/site1
+sudo touch /var/www/site1/index.html
+echo '<h1> SITE 1 </h1>' > /var/www/site1/index.html
+#########КОНФИГ ВТОРОГО ХОСТА################
+sudo tail -n 13 /etc/nginx/sites-available/default | sed 's/#//g' > /etc/nginx/sites-enabled/site2
+sed -i 's/listen 80/listen 82/g' /etc/nginx/sites-enabled/site2
+sed -i 's/server_name example.com/server_name _/g' /etc/nginx/sites-enabled/site2
+sed -i 's&/example.com&/site2&g' /etc/nginx/sites-enabled/site2
+sudo mkdir /var/www/site2
+sudo touch /var/www/site2/index.html
+echo '<h1> SITE 2 </h1>' > /var/www/site2/index.html
+sudo rm -rf /etc/nginx/sites-enabled/default
+sudo systemctl restart nginx.service

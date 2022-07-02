@@ -1,0 +1,134 @@
+#!/bin/python3
+import os
+import subprocess
+import time
+import re
+import io
+import sys
+########НЕОБХОДИМЫЕ ЗНАЧЕНИЯ######################
+user = subprocess.getoutput("whoami")
+ip = subprocess.getoutput("hostname -I")
+reversip = ('.'.join([ip.split('.')[2],ip.split('.')[1],ip.split('.')[0]]))
+reversip2 = (' '.join([ip.split('.')[3]]))
+################################################
+os.system("sudo apt install -y apache2 bind9 dnsutils")
+##НАСТРОЙКА BIND##########################
+file5 = '/etc/bind/named.conf.options'
+with open(file5 , "w") as f:
+            f.write("options {\n"
+        '\tdirectory "/var/cache/bind";\n'
+        "\tforwarders {\n"
+              "\t\t8.8.4.4;\n"
+         "\t};\n"
+        "\trecursion yes;\n"
+        "\tdnssec-validation auto;\n"
+        "\tlisten-on {\n"
+              "\t\t127.0.0.1;\n"
+              "\t\t"+ip+";\n"
+              "\t\t};\n"
+        "\t};")
+os.system("clear")
+name_zone = input("Введите название зоны, например 'test.dns' или 'test'\n")
+file6 = '/etc/bind/named.conf.local'
+with open(file6 , "w") as f:
+            f.write('zone \"'+name_zone+'\" {\n'
+           'type master;\n'
+           'file \"/etc/bind/'+name_zone+'.forward\";\n'
+           '};\n'
+           '\n'
+           'zone \"'+reversip+'.in-addr.arpa\" {\n'
+           'type master;\n'
+           'file \"/etc/bind/'+name_zone+'.revers\";\n'
+           '};')
+
+os.system("sudo touch /etc/bind/"+name_zone+".forward /etc/bind/"+name_zone+".revers")
+name_site = input("Введи доменное имя первого сайта: ")
+name_site2 = input("Введи доменное имя второго сайта: ")
+file7 = '/etc/bind/'+name_zone+'.forward'
+with open(file7 , "w") as f:
+            f.write(';\n'
+'; BIND data file for local loopback interface\n'
+';\n'
+'$TTL    604800\n'
+'@       IN      SOA     localhost.'+name_zone+'. root.localhost.'+name_zone+'. (\n'
+'                              2         ; Serial\n'
+'                         604800         ; Refresh\n'
+'                         86400         ; Retry\n'
+'                       2419200         ; Expire\n'
+'                        604800 )       ; Negative Cache TTL\n'
+';\n'
+'@               IN      NS      \tlocalhost.'+name_zone+'.\n'
+'localhost               IN      A       \t127.0.0.1\n'
+''+name_site+'           IN      A              '+ip+'\n'
+''+name_site2+'           IN      A              '+ip+'\n')
+
+file8 = '/etc/bind/'+name_zone+'.revers'
+with open(file8 , "w") as f:
+            f.write(';\n'
+'; BIND reverse data file for local loopback interface\n'
+';\n'
+'$TTL    604800\n'
+'@       IN      SOA     localhost.'+name_zone+'. root.localhost.'+name_zone+'. (\n'
+'                              1         ; Serial\n'
+'                         604800         ; Refresh\n'
+'                         86400          ; Retry\n'
+'                       2419200          ; Expire\n'
+'                        604800 )        ; Negative Cache TTL\n'
+';\n'
+'@       IN      NS      localhost.'+name_zone+'.\n'
+''+reversip2+'     IN      PTR     localhost.'+name_zone+'.\n'
+''+reversip2+'     IN      PTR     '+name_site+'.'+name_zone+'.\n'
+''+reversip2+'     IN      PTR     '+name_site2+'.'+name_zone+'.\n')
+###################НАСТРОЙКА APACHE######################
+os.system("sudo rm -rf /var/www/html")
+os.system("sudo rm -rf /etc/apache2/sites-available/000-default.conf")
+os.system("clear")
+name_dir = input("Введи название директории в которой будет храниться index.html твоего первого '"'MEGA'"' сайта\n")
+os.system("sudo mkdir /var/www/"+name_dir)
+os.system("sudo touch /var/www/"+name_dir+"/index.html")
+file1 = '/var/www/'+name_dir+'/index.html'
+with open(file1 , "w") as f:
+    f.write("<h1>SITE 1 </h1>")
+
+while True:
+    name_dir2 = input("Введи название директории в которой будет храниться index.html твоего второго '"'MEGA'"' сайта\n")
+    if name_dir != name_dir2:
+        os.system("sudo mkdir /var/www/"+name_dir2)
+        os.system("sudo touch /var/www/"+name_dir2+"/index.html")
+        break
+    else:
+        print("Уже сущетвует")
+
+file2 = '/var/www/'+name_dir2+'/index.html'
+with open(file2 , "w") as f:
+    f.write("<h1>SITE 2 </h1>")
+
+
+file3 = '/etc/apache2/sites-available/'+name_site+'.conf'
+with open(file3 , "w") as f:
+    f.write("<VirtualHost *:80>\n"
+   "\tServerAdmin admin@"+name_site+"\n"
+   "\tServerName "+name_site+"."+name_zone+"\n"
+   "\tDocumentRoot /var/www/"+name_dir+"\n"
+   "\tErrorLog ${APACHE_LOG_DIR}/error.log\n"
+   "\tCustomLog ${APACHE_LOG_DIR}/access.log combined\n"
+"</VirtualHost>")
+
+file4 = '/etc/apache2/sites-available/'+name_site2+'.conf'
+with open(file4 , "w") as f:
+    f.write("<VirtualHost *:80>\n"
+   "\tServerAdmin admin@"+name_site2+"\n"
+   "\tServerName "+name_site2+"."+name_zone+"\n"
+   "\tDocumentRoot /var/www/"+name_dir2+"\n"
+   "\tErrorLog ${APACHE_LOG_DIR}/error.log\n"
+   "\tCustomLog ${APACHE_LOG_DIR}/access.log combined\n"
+"</VirtualHost>")
+os.system("sudo a2ensite "+name_site+".conf")
+os.system("sudo a2ensite "+name_site2+".conf")
+os.system("clear")
+print ("Перезапуск APACHE2 и BIND9")
+os.system("sudo systemctl restart apache2 bind9")
+time.sleep(3)
+print("1. Директории с файлами сайтов index.html хранятся в /var/www/[название ваших сайтов]\n"
+                        "2. Настройки вашей forward и revers зон хранятся в /etc/bind/[название вашей зоны].forward .revers\n"
+                        "3. Настройки виртуальных хостов хранятся в /etc/apache2/sites-available/[название ваших сайтов].conf")
